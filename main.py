@@ -79,6 +79,11 @@ def admin_menu(admin):
         print("3) Guruh ochish")
         print("4) Teacher biriktirish")
         print("5) Guruhga student qo'shish")
+        print("6) Barcha guruhlarni ko'rish")
+        print("7) Barcha teacherlarni ko'rish")
+        print("8) Barcha studentlarni ko'rish")
+        print("9) Studentning guruhlarini ko'rish")
+        print("10) Teacherning guruhlarini ko'rish")
         print("0) Chiqish")
         c = input("Tanlang: ")
         if c == "1":
@@ -116,9 +121,39 @@ def admin_menu(admin):
             sid = int(input("Student ID: "))
             for g in groups:
                 if g.id == gid:
-                    g.student_ids.append(sid)
-                    print("Qo'shildi!")
+                    if sid not in g.student_ids:
+                        g.student_ids.append(sid)
+                        print("Qo'shildi!")
+                    else:
+                        print("Bu student allaqachon guruhda!")
                     break
+        elif c == "6":
+            print("\n--- Barcha guruhlar ---")
+            for g in groups:
+                tname = next((u.fullname for u in users if isinstance(u, Teacher) and u.id == g.teacher_id), "-")
+                print(f"ID:{g.id} {g.name} | KursID:{g.course_id} | Teacher:{tname} | Students:{g.student_ids}")
+        elif c == "7":
+            print("\n--- Barcha teacherlar ---")
+            for u in users:
+                if isinstance(u, Teacher):
+                    print(f"ID:{u.id} {u.fullname} | Skills: {', '.join(u.skills)}")
+        elif c == "8":
+            print("\n--- Barcha studentlar ---")
+            for u in users:
+                if isinstance(u, Student):
+                    print(f"ID:{u.id} {u.fullname} | Level: {u.level}")
+        elif c == "9":
+            sid = int(input("Student ID: "))
+            print(f"Student ID {sid} guruhlari:")
+            for g in groups:
+                if sid in g.student_ids:
+                    print(f"ID:{g.id} {g.name}")
+        elif c == "10":
+            tid = int(input("Teacher ID: "))
+            print(f"Teacher ID {tid} guruhlari:")
+            for g in groups:
+                if g.teacher_id == tid:
+                    print(f"ID:{g.id} {g.name}")
         elif c == "0":
             break
         else:
@@ -128,8 +163,9 @@ def teacher_menu(teacher):
     while True:
         print("\n--- Teacher menyu ---")
         print("1) Guruhlarim")
-        print("2) Uyga vazifa joylash")
-        print("3) Baho qo'yish")
+        print("2) Guruhdagi studentlar")
+        print("3) Uyga vazifa joylash")
+        print("4) Baho qo'yish")
         print("0) Chiqish")
         c = input("Tanlang: ")
         if c == "1":
@@ -139,18 +175,45 @@ def teacher_menu(teacher):
                     print(f"ID:{g.id} {g.name}")
         elif c == "2":
             gid = int(input("Guruh ID: "))
+            group = next((g for g in groups if g.id == gid and g.teacher_id == teacher.id), None)
+            if group:
+                print(f"Guruh: {group.name}")
+                for sid in group.student_ids:
+                    s = next((u for u in users if isinstance(u, Student) and u.id == sid), None)
+                    if s:
+                        print(f"ID:{s.id} {s.fullname} | Level: {s.level}")
+            else:
+                print("Bunday guruh topilmadi yoki sizga tegishli emas!")
+        elif c == "3":
+            gid = int(input("Guruh ID: "))
+            group = next((g for g in groups if g.id == gid and g.teacher_id == teacher.id), None)
+            if not group:
+                print("Bunday guruh topilmadi yoki sizga tegishli emas!")
+                continue
             title = input("Vazifa nomi: ")
             desc = input("Tavsif: ")
             deadline = input("Deadline: ")
             hid = max([h.id for h in homeworks]+[0])+1
             homeworks.append(Homework(hid, gid, title, desc, deadline))
             print("Vazifa joylandi!")
-        elif c == "3":
+        elif c == "4":
+            gid = int(input("Guruh ID: "))
+            group = next((g for g in groups if g.id == gid and g.teacher_id == teacher.id), None)
+            if not group:
+                print("Bunday guruh topilmadi yoki sizga tegishli emas!")
+                continue
             hid = int(input("Homework ID: "))
+            homework = next((h for h in homeworks if h.id == hid and h.group_id == gid), None)
+            if not homework:
+                print("Bunday homework topilmadi!")
+                continue
             sid = int(input("Student ID: "))
+            if sid not in group.student_ids:
+                print("Bu student bu guruhda emas!")
+                continue
             value = input("Baho: ")
-            gid = max([g.id for g in grades]+[0])+1
-            grades.append(Grade(gid, hid, sid, value))
+            gid_grade = max([g.id for g in grades]+[0])+1
+            grades.append(Grade(gid_grade, hid, sid, value))
             print("Baho qo'yildi!")
         elif c == "0":
             break
@@ -161,23 +224,36 @@ def student_menu(student):
     while True:
         print("\n--- Student menyu ---")
         print("1) Guruhlarim")
-        print("2) Uyga vazifalarim")
-        print("3) Baholarim")
+        print("2) Guruhdagi studentlar (faqat o'zi a'zo bo'lgan)")
+        print("3) Uyga vazifalarim")
+        print("4) Baholarim")
         print("0) Chiqish")
         c = input("Tanlang: ")
         if c == "1":
             print("Siz a'zo bo'lgan guruhlar:")
             for g in groups:
                 if student.id in g.student_ids:
-                    print(f"ID:{g.id} {g.name}")
+                    tname = next((u.fullname for u in users if isinstance(u, Teacher) and u.id == g.teacher_id), "-")
+                    print(f"ID:{g.id} {g.name} | Teacher: {tname}")
         elif c == "2":
+            gid = int(input("Guruh ID: "))
+            group = next((g for g in groups if g.id == gid and student.id in g.student_ids), None)
+            if group:
+                print(f"Guruh: {group.name}")
+                for sid in group.student_ids:
+                    s = next((u for u in users if isinstance(u, Student) and u.id == sid), None)
+                    if s:
+                        print(f"ID:{s.id} {s.fullname} | Level: {s.level}")
+            else:
+                print("Bunday guruh topilmadi yoki siz a'zo emassiz!")
+        elif c == "3":
             print("Siz uchun uyga vazifalar:")
             for g in groups:
                 if student.id in g.student_ids:
                     for h in homeworks:
                         if h.group_id == g.id:
                             print(f"ID:{h.id} {h.title} ({h.deadline})")
-        elif c == "3":
+        elif c == "4":
             print("Sizning baholaringiz:")
             for gr in grades:
                 if gr.student_id == student.id:
